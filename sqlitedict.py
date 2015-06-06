@@ -103,7 +103,7 @@ def decode(obj):
 
 class SqliteDict(DictClass):
     def __init__(self, filename=None, tablename='unnamed', flag='c',
-                 autocommit=False, journal_mode="DELETE"):
+                 autocommit=False, journal_mode="DELETE", timeout=30):
         """
         Initialize a thread-safe sqlite-backed dictionary. The dictionary will
         be a table `tablename` in database file `filename`. A single file (=database)
@@ -295,7 +295,7 @@ class SqliteMultithread(Thread):
     in a separate thread (in the same order they arrived).
 
     """
-    def __init__(self, filename, autocommit, journal_mode):
+    def __init__(self, filename, autocommit, journal_mode, timeout=30):
         super(SqliteMultithread, self).__init__()
         self.filename = filename
         self.autocommit = autocommit
@@ -306,12 +306,13 @@ class SqliteMultithread(Thread):
         self.exception = None
         self.log = logging.getLogger('sqlitedict.SqliteMultithread')
         self.start()
+        self.sqlite_timeout = timeout
 
     def run(self):
         if self.autocommit:
-            conn = sqlite3.connect(self.filename, isolation_level=None, check_same_thread=False)
+            conn = sqlite3.connect(self.filename, timeout=self.sqlite_timeout, isolation_level=None, check_same_thread=False)
         else:
-            conn = sqlite3.connect(self.filename, check_same_thread=False)
+            conn = sqlite3.connect(self.filename, timeout=self.sqlite_timeout, check_same_thread=False)
         conn.execute('PRAGMA journal_mode = %s' % self.journal_mode)
         conn.text_factory = str
         cursor = conn.cursor()
